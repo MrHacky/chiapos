@@ -62,16 +62,20 @@ namespace UniformSort {
         uint64_t read_pos = input_disk_begin;
         const uint64_t full_buffer_size = (uint64_t)BUF_SIZE / entry_len;
 
-        auto read_next = [&input_disk, full_buffer_size, num_entries, entry_len, &read_pos, &next_buffer, &next_buf_size]() {
+        std::future<bool> next_read_job;
+
+        auto read_next = [&input_disk, full_buffer_size, num_entries, entry_len, &read_pos, &next_buffer, &next_buf_size, &next_read_job]() {
             next_buf_size = std::min(full_buffer_size, num_entries - (read_pos / entry_len));
             const uint64_t read_size = next_buf_size * entry_len;
-            auto next_read_job = pool.submit([&input_disk, read_pos, read_size, buffer = next_buffer.get()]{input_disk.Read(read_pos, buffer, read_size);});
+            if (read_size == 0) {
+              return;
+            }
+            next_read_job = pool.submit([&input_disk, read_pos, read_size, buffer = next_buffer.get()]{input_disk.Read(read_pos, buffer, read_size);});
             read_pos += next_buf_size * entry_len;
-            return next_read_job;
         };
 
         // Start reading the first block. Memset will take a while.
-        auto next_read_job = read_next();
+        read_next();
 
         // The number of buckets needed (the smallest power of 2 greater than 2 * num_entries).
         while ((1ULL << bucket_length) < 2 * num_entries) bucket_length++;
@@ -85,7 +89,7 @@ namespace UniformSort {
                 buf_size = next_buf_size;
                 buffer.swap(next_buffer);
                 buf_ptr = 0;
-                next_read_job = read_next();
+                read_next();
             }
             buf_size--;
             // First unique bits in the entry give the expected position of it in the sorted array.
