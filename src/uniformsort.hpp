@@ -64,8 +64,8 @@ namespace UniformSort {
 
         std::future<bool> next_read_job;
 
-        auto read_next = [&input_disk, full_buffer_size, num_entries, entry_len, &read_pos, &next_buffer, &next_buf_size, &next_read_job]() {
-            next_buf_size = std::min(full_buffer_size, num_entries - (read_pos / entry_len));
+        auto read_next = [&input_disk, full_buffer_size, num_entries, entry_len, &read_pos, input_disk_begin, &next_buffer, &next_buf_size, &next_read_job]() {
+            next_buf_size = std::min(full_buffer_size, num_entries - ((read_pos - input_disk_begin) / entry_len));
             const uint64_t read_size = next_buf_size * entry_len;
             if (read_size == 0) {
               return;
