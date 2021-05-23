@@ -79,7 +79,7 @@ namespace UniformSort {
 
         // The number of buckets needed (the smallest power of 2 greater than 2 * num_entries).
         while ((1ULL << bucket_length) < 2 * num_entries) bucket_length++;
-        memset(memory, 0, memory_len);
+        bitfield is_used(Util::RoundSize(num_entries));
 
         for (uint64_t i = 0; i < num_entries; i++) {
             if (buf_size == 0) {
@@ -94,11 +94,10 @@ namespace UniformSort {
             buf_size--;
             // First unique bits in the entry give the expected position of it in the sorted array.
             // We take 'bucket_length' bits starting with the first unique one.
-            uint64_t pos =
-                Util::ExtractNum(buffer.get() + buf_ptr, entry_len, bits_begin, bucket_length) *
-                entry_len;
+            uint64_t idx = Util::ExtractNum(buffer.get() + buf_ptr, entry_len, bits_begin, bucket_length);
+            uint64_t pos = idx * entry_len;
             // As long as position is occupied by a previous entry...
-            while (!IsPositionEmpty(memory + pos, entry_len) && pos < memory_len) {
+            while (is_used.get(idx) && pos < memory_len) {
                 // ...store there the minimum between the two and continue to push the higher one.
                 if (Util::MemCmpBits(
                         memory + pos, buffer.get() + buf_ptr, entry_len, bits_begin) > 0) {
@@ -108,16 +107,18 @@ namespace UniformSort {
                     swaps++;
                 }
                 pos += entry_len;
+                idx++;
             }
             // Push the entry in the first free spot.
             memcpy(memory + pos, buffer.get() + buf_ptr, entry_len);
+            is_used.set(idx);
             buf_ptr += entry_len;
         }
         uint64_t entries_written = 0;
         // Search the memory buffer for occupied entries.
-        for (uint64_t pos = 0; entries_written < num_entries && pos < memory_len;
-             pos += entry_len) {
-            if (!IsPositionEmpty(memory + pos, entry_len)) {
+        for (uint64_t idx = 0, pos = 0; entries_written < num_entries && pos < memory_len;
+             idx++, pos += entry_len) {
+            if (is_used.get(idx)) {
                 // We've found an entry.
                 // write the stored entry itself.
                 memcpy(
