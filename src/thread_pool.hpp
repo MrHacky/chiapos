@@ -213,8 +213,12 @@ public:
         std::shared_ptr<std::promise<bool>> promise(new std::promise<bool>);
         std::future<bool> future = promise->get_future();
         push_task([task, args..., promise] {
+            try {
             task(args...);
             promise->set_value(true);
+            } catch (...) {
+                promise->set_exception(std::current_exception());
+            }
         });
         return future;
     }
