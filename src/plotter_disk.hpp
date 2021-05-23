@@ -48,6 +48,7 @@
 #include "pos_constants.hpp"
 #include "sort_manager.hpp"
 #include "util.hpp"
+#include "copy.hpp"
 
 #define B17PHASE23
 
@@ -383,8 +384,8 @@ public:
                 }
             } else {
                 if (!bCopied) {
-                    fs::copy(
-                        tmp_2_filename, final_2_filename, fs::copy_options::overwrite_existing, ec);
+                    copy_buffered(tmp_2_filename, final_2_filename, ec);
+                    //fs::copy(tmp_2_filename, final_2_filename, fs::copy_options::overwrite_existing, ec);
                     if (ec.value() != 0) {
                         std::cout << "Could not copy " << tmp_2_filename << " to "
                                   << final_2_filename << ". Error " << ec.message()
