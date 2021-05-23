@@ -58,6 +58,7 @@ public:
     {
         wait_for_tasks();
         running = false;
+        queue_cv.notify_all();
         destroy_threads();
     }
 
@@ -162,6 +163,7 @@ public:
             const std::scoped_lock lock(queue_mutex);
             tasks.push(std::function<void()>(task));
         }
+        queue_cv.notify_one();
     }
 
     /**
@@ -190,6 +192,7 @@ public:
         paused = true;
         wait_for_tasks();
         running = false;
+        queue_cv.notify_all();
         destroy_threads();
         thread_count = _thread_count ? _thread_count : std::thread::hardware_concurrency();
         threads.reset(new std::thread[thread_count]);
@@ -312,7 +315,10 @@ private:
      */
     bool pop_task(std::function<void()> &task)
     {
-        const std::scoped_lock lock(queue_mutex);
+        std::unique_lock lock(queue_mutex);
+        queue_cv.wait(lock, [this] {
+            return !tasks.empty() || !running;
+        });
         if (tasks.empty())
             return false;
         else
@@ -363,6 +369,7 @@ private:
      * @brief A mutex to synchronize access to the task queue by different threads.
      */
     mutable std::mutex queue_mutex;
+    mutable std::condition_variable queue_cv;
 
     /**
      * @brief An atomic variable indicating to the workers to keep running. When set to false, the workers permanently stop working.
