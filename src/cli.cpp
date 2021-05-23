@@ -117,6 +117,50 @@ int main(int argc, char *argv[]) try {
 
     if (operation == "help") {
         HelpAndQuit(options);
+    } else if (operation == "simon1") {
+        std::error_code ec;
+        fs::copy("/mnt/Plot1/test.test", "/mnt/ReceivePlots/test.test", fs::copy_options::overwrite_existing, ec);
+        std::cout << "ec: " << ec.value() << "\n";
+    } else if (operation == "simon2") {
+        FileDisk in("/mnt/Plot1/test.test", 0);
+        FileDisk out("/mnt/ReceivePlots/test.test");
+
+        uint64_t size = fs::file_size(in.GetFileName());
+
+        const uint64_t BUF_SIZE = 8*1024*1024;
+        auto buffer = std::make_unique<uint8_t[]>(BUF_SIZE);
+        auto next_buffer = std::make_unique<uint8_t[]>(BUF_SIZE);
+
+        uint64_t read_pos = 0;
+        uint64_t write_pos = 0;
+
+        std::future<bool> reader;
+        auto startRead = [&reader, &read_pos, &in, &next_buffer, size, BUF_SIZE] {
+            if (read_pos < size) {
+                uint64_t buf_size = std::min(BUF_SIZE, size - read_pos);
+
+                reader = pool.submit([&in, buf = next_buffer.get(), read_pos, buf_size] {
+                    in.Read(read_pos, buf, buf_size);
+                });
+                read_pos += buf_size;
+            }
+        };
+
+        startRead();
+        while (write_pos < size) {
+            reader.wait();
+            buffer.swap(next_buffer);
+            startRead();
+
+            uint64_t buf_size = std::min(BUF_SIZE, size - write_pos);
+            out.Write(write_pos, buffer.get(), buf_size);
+            write_pos += buf_size;
+        }
+
+        std::cout << in.GetFileName() << ": " << size << "\n";
+        //std::error_code ec;
+        //fs::copy(, , fs::copy_options::overwrite_existing, ec);
+        //std::cout << "ec: " << ec.value() << "\n";
     } else if (operation == "create") {
         cout << "Generating plot for k=" << static_cast<int>(k) << " filename=" << filename
              << " id=" << id << endl
