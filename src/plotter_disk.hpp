@@ -74,6 +74,11 @@ public:
         uint8_t num_threads_input = 0,
         uint8_t phases_flags = ENABLE_BITFIELD)
     {
+        std::cout << "phases_flags(CreatePlotDisk): " << int(phases_flags) << "\n";
+        std::cout << "ENABLE_BITFIELD(CreatePlotDisk): " << int(ENABLE_BITFIELD) << "\n";
+        std::cout << "&(CreatePlotDisk): " << int(phases_flags & ENABLE_BITFIELD) << "\n";
+        std::cout << "==0(CreatePlotDisk): " << ((phases_flags & ENABLE_BITFIELD) == 0) << "\n";
+
         // Increases the open file limit, we will open a lot of files.
 #ifndef _WIN32
         struct rlimit the_limit = {600, 600};

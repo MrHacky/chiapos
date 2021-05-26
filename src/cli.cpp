@@ -159,6 +159,9 @@ int main(int argc, char *argv[]) try {
         if (show_progress) {
             phases_flags = phases_flags | SHOW_PROGRESS;
         }
+        std::cout << "phases_flags(cli): " << phases_flags << "\n";
+        std::cout << "ENABLE_BITFIELD(cli): " << ENABLE_BITFIELD << "\n";
+        std::cout << "phases_flags&ENABLE_BITFIELD(cli): " << (phases_flags & ENABLE_BITFIELD) << "\n";
         plotter.CreatePlotDisk(
                 tempdir,
                 tempdir2,
